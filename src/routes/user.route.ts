@@ -1,5 +1,7 @@
 import { Router } from "express";
 import prisma from "../prisma";
+import { validate } from "../middleware/validate";
+import { getUserParamsSchema } from "../schemas/user.schemas";
 
 const router = Router();
 
@@ -23,7 +25,7 @@ router.get("/", async (_, res) => {
 });
 
 // READ ONE
-router.get("/:id", async (req, res) => {
+router.get("/:id", validate(getUserParamsSchema), async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: Number(req.params.id) },
   });
