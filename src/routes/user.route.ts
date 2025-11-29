@@ -2,8 +2,14 @@ import { Router } from "express";
 import prisma from "../prisma";
 import { validate } from "../middleware/validate";
 import { getUserParamsSchema } from "../schemas/user.schemas";
+import client from 'prom-client';
 
 const router = Router();
+const userCrudCounter = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests processed',
+  labelNames: ['method', 'route', 'code'],
+});
 
 /**
  * @swagger
@@ -37,8 +43,10 @@ router.post("/", async (req, res) => {
     const user = await prisma.user.create({
       data: { email, name },
     });
+    userCrudCounter.inc({ method: req.method, route: '/users', code: 200 });
     res.json(user);
   } catch (error) {
+    userCrudCounter.inc({ method: req.method, route: '/users', code: 500 });
     res.status(500).json({ error });
   }
 });
@@ -61,8 +69,9 @@ router.post("/", async (req, res) => {
  *       500:
  *         description: Lỗi server
  */
-router.get("/", async (_, res) => {
+router.get("/", async (req, res) => {
   const users = await prisma.user.findMany();
+  userCrudCounter.inc({ method: req.method, route: '/users/all', code: 200 });
   res.json(users);
 });
 
@@ -93,6 +102,7 @@ router.get("/:id", validate(getUserParamsSchema), async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: Number(req.params.id) },
   });
+  userCrudCounter.inc({ method: req.method, route: `/users/id`, code: 200 });
   res.json(user);
 });
 
@@ -126,6 +136,7 @@ router.put("/:id", async (req, res) => {
     where: { id: Number(req.params.id) },
     data: { name, email },
   });
+  userCrudCounter.inc({ method: req.method, route: '/users', code: 200 });
   res.json(user);
 });
 
@@ -151,6 +162,7 @@ router.delete("/:id", async (req, res) => {
   await prisma.user.delete({
     where: { id: Number(req.params.id) },
   });
+  userCrudCounter.inc({ method: req.method, route: '/users/delete', code: 200 });
   res.json({ message: "User deleted" });
 });
 
