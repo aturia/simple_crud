@@ -1,15 +1,19 @@
 import express from "express";
 import userRouter from "./routes/user.route";
+import metric from "./routes/metric.route";
 import swaggerUi from "swagger-ui-express";
 import swaggerJsdoc from "swagger-jsdoc";
 import { UserSchema } from "./schemas/user.schemas";
 import zodToJsonSchema from "zod-to-json-schema";
+import client from 'prom-client';
 
 const app = express();
 
-app.use(express.json());
+// ######################################################################
+// 1. Tích hợp Prom-Client
+// ######################################################################
 
-app.use("/users", userRouter);
+client.collectDefaultMetrics({ prefix: 'nodejs_app_' });
 
 // --- 2. Chuyển đổi Zod Schema thành OpenAPI Schema (JSON Schema) ---
 const UserOpenAPISchema = zodToJsonSchema(UserSchema, { $refStrategy: 'none' });
@@ -44,9 +48,11 @@ const options = {
 // --- 4. Swagger Setup ---
 const swaggerSpec = swaggerJsdoc(options);
 
-
 // --- 5. Config Middleware Swagger UI ---
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use(express.json());
+app.use('/metrics', metric);
+app.use("/users", userRouter);
 
 app.listen(3000, () => {
   console.log("Server is running on http://localhost:3000");
